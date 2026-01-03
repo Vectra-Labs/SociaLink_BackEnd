@@ -43,3 +43,67 @@ export const updateWorkerProfile = async (req, res) => {
     });
   }
 };
+
+
+//----------------------------- Add Worker Specialities -----------------------------//
+export const addWorkerSpecialities = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { speciality_ids } = req.body;
+
+    //  Vérifier que les spécialités existent
+    const existingSpecialities = await prisma.speciality.findMany({
+      where: {
+        speciality_id: { in: speciality_ids },
+      },
+      select: { speciality_id: true },
+    });
+
+    if (existingSpecialities.length !== speciality_ids.length) {
+      return res.status(400).json({
+        message: "One or more specialities do not exist",
+      });
+    }
+
+    //  Éviter les doublons (déjà associées)
+    const alreadyLinked = await prisma.workerSpeciality.findMany({
+      where: {
+        user_id: userId,
+        speciality_id: { in: speciality_ids },
+      },
+      select: { speciality_id: true },
+    });
+
+    const alreadyLinkedIds = alreadyLinked.map(
+      (item) => item.speciality_id
+    );
+
+    const newSpecialities = speciality_ids.filter(
+      (id) => !alreadyLinkedIds.includes(id)
+    );
+
+    if (newSpecialities.length === 0) {
+      return res.status(200).json({
+        message: "Specialities already added",
+      });
+    }
+
+    //  Créer les relations
+    await prisma.workerSpeciality.createMany({
+      data: newSpecialities.map((specialityId) => ({
+        user_id: userId,
+        speciality_id: specialityId,
+      })),
+    });
+
+    res.status(201).json({
+      message: "Specialities added successfully",
+      added_specialities: newSpecialities,
+    });
+  } catch (error) {
+    console.error("ADD WORKER SPECIALITIES ERROR:", error);
+    res.status(500).json({
+      message: "Failed to add specialities",
+    });
+  }
+};

@@ -35,3 +35,11 @@ export const updateWorkerProfileSchema = z.object({
   profile_pic_url: z.string().url().optional(),
 });
 
+export const addWorkerSpecialitiesSchema = z.object({
+  speciality_ids: z
+    .array(
+      z.number().int().positive("Speciality ID must be a positive integer")
+    )
+    .min(1, "At least one speciality must be selected"),
+});
+

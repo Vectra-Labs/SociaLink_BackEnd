@@ -19,8 +19,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //API routes    
-app.use("api/auth", authRoutes);
-app.use("api/worker", workerRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/worker", workerRoutes);
 app.use("/api/specialities", specialityRoutes);
 
 

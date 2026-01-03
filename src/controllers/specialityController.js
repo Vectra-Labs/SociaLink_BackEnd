@@ -19,3 +19,5 @@ export const getAllSpecialities = async (req, res) => {
     });
   }
 };
+
+
