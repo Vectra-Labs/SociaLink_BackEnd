@@ -2,7 +2,7 @@ import {prisma} from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 
-
+//----------------------------- worker Registration -----------------------------//
 export const registerWorker = async (req, res) => {
   try {
     // req.body is already validated by Zod
@@ -139,7 +139,7 @@ export const registerEstablishment = async (req, res) => {
   }
 };
 
-
+//----------------------------- Login -----------------------------//
 export const login = async (req, res) => {
   try {
     // req.body is already validated by Zod
@@ -185,7 +185,7 @@ export const login = async (req, res) => {
   }
 };
 
-
+//-----------------------------  Logout -----------------------------//
 export const logout = async (req, res) => {
   res.cookie("jwt", "", {
     httpOnly: true,

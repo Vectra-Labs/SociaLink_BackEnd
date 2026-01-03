@@ -4,6 +4,7 @@ import {disconnectDB, connectDB} from "./config/db.js";
 
 //Import routes
 import authRoutes from "./routes/authRoutes.js"
+import workerRoutes from "./routes/workerRoutes.js"
 
 config();
 
@@ -18,6 +19,8 @@ app.use(express.urlencoded({ extended: true }));
 
 //API routes    
 app.use("/auth", authRoutes);
+
+app.use("/worker", workerRoutes);
 
 
 
