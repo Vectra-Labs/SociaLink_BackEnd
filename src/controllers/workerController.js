@@ -143,3 +143,53 @@ export const getWorkerSpecialities = async (req, res) => {
     });
   }
 };
+
+
+//----------------------------- Remove Worker Speciality -----------------------------//
+export const removeWorkerSpeciality = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const specialityId = Number(req.params.id);
+
+    if (isNaN(specialityId)) {
+      return res.status(400).json({
+        message: "Invalid speciality id",
+      });
+    }
+
+    // Vérifier si la relation existe
+    const existing = await prisma.workerSpeciality.findUnique({
+      where: {
+        user_id_speciality_id: {
+          user_id: userId,
+          speciality_id: specialityId,
+        },
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        message: "Speciality not found for this worker",
+      });
+    }
+
+    // Supprimer la relation
+    await prisma.workerSpeciality.delete({
+      where: {
+        user_id_speciality_id: {
+          user_id: userId,
+          speciality_id: specialityId,
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "Speciality removed successfully",
+    });
+  } catch (error) {
+    console.error("REMOVE WORKER SPECIALITY ERROR:", error);
+    res.status(500).json({
+      message: "Failed to remove speciality",
+    });
+  }
+};
