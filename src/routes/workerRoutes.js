@@ -1,6 +1,6 @@
 import express from "express";
 import { uploadImage } from "../middleware/uploadImageMiddleware.js";
-import {updateWorkerProfile, addWorkerSpecialities} from "../controllers/workerController.js";
+import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities} from "../controllers/workerController.js";
 import { validate } from "../middleware/validateMiddleware.js";
 import { updateWorkerProfileSchema ,addWorkerSpecialitiesSchema } from "../validators/authSchema.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -14,5 +14,6 @@ router.put("/profile/update", authMiddleware,roleMiddleware("WORKER"),uploadImag
 
 router.post( "/add/specialities",authMiddleware,roleMiddleware("WORKER"),validate(addWorkerSpecialitiesSchema),addWorkerSpecialities);
 
+router.get("/specialities",authMiddleware,roleMiddleware("WORKER"),getWorkerSpecialities);
 
 export default router;

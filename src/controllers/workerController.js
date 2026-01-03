@@ -107,3 +107,39 @@ export const addWorkerSpecialities = async (req, res) => {
     });
   }
 };
+
+//----------------------------- Get Worker Specialities -----------------------------//
+export const getWorkerSpecialities = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const workerSpecialities = await prisma.workerSpeciality.findMany({
+      where: {
+        user_id: userId,
+      },
+      include: {
+        speciality: {
+          select: {
+            speciality_id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Format response to return only speciality details
+    const specialities = workerSpecialities.map((item) => ({
+      speciality_id: item.speciality.speciality_id,
+      name: item.speciality.name,
+    }));
+
+    res.status(200).json({
+      data: specialities,
+    });
+  } catch (error) {
+    console.error("GET WORKER SPECIALITIES ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch worker specialities",
+    });
+  }
+};
