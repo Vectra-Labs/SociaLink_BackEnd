@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+///////////////////////
+// ENUMS
+///////////////////////
+
+enum UserRole {
+  WORKER
+  ESTABLISHMENT
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+}
+
+///////////////////////
+// LOCATION
+///////////////////////
+
+model Region {
+  region_id Int    @id @default(autoincrement())
+  name      String @unique
+
+  cities City[]
+}
+
+model City {
+  city_id   Int    @id @default(autoincrement())
+  name      String
+  region_id Int
+
+  region         Region                 @relation(fields: [region_id], references: [region_id])
+  workers        WorkerProfile[]
+  establishments EstablishmentProfile[]
+
+  missions Mission[]
+}
+
+///////////////////////
+// USER & AUTH
+///////////////////////
+
+model User {
+  user_id    Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  role       UserRole
+  created_at DateTime @default(now())
+
+  workerProfile        WorkerProfile?
+  establishmentProfile EstablishmentProfile?
+  notifications        Notification[]
+}
+
+///////////////////////
+// WORKER
+///////////////////////
+
+model WorkerProfile {
+  user_id Int @id
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  first_name          String?
+  last_name           String?
+  title               String?
+  experience_years    Int?
+  verification_status VerificationStatus @default(PENDING)
+
+  address String?
+  city_id Int?
+  city    City?   @relation(fields: [city_id], references: [city_id])
+  phone   String?
+  bio     String?
+
+  profile_pic_url String?
+  cv_url          String?
+
+  diplomas       Diploma[]
+  experiences    Experience[]
+  availabilities Availability[]
+  applications   Application[]
+  specialities   WorkerSpeciality[]
+}
+
+///////////////////////
+// ESTABLISHMENT
+///////////////////////
+
+model EstablishmentProfile {
+  user_id Int @id
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  structure_id Int?
+  structure    Structure? @relation(fields: [structure_id], references: [id])
+
+  name               String
+  contact_first_name String
+  contact_last_name  String
+  contact_function   String?
+  ice_number         String  @unique
+  rc_number          String?
+  address            String?
+  city_id            Int?
+  city               City?   @relation(fields: [city_id], references: [city_id])
+
+  phone               String?
+  verification_status VerificationStatus @default(PENDING)
+
+  service  String?
+  logo_url String?
+
+  missions Mission[]
+}
+
+///////////////////////
+// STRUCTURE
+///////////////////////
+
+model Structure {
+  id        Int     @id @default(autoincrement())
+  label     String  @unique
+  is_active Boolean @default(true)
+
+  establishments EstablishmentProfile[]
+}
+
+///////////////////////
+// SPECIALITIES
+///////////////////////
+
+model Speciality {
+  speciality_id Int    @id @default(autoincrement())
+  name          String @unique
+
+  workers WorkerSpeciality[]
+}
+
+model WorkerSpeciality {
+  user_id       Int
+  speciality_id Int
+
+  worker     WorkerProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  speciality Speciality    @relation(fields: [speciality_id], references: [speciality_id], onDelete: Cascade)
+
+  @@id([user_id, speciality_id])
+}
+
+///////////////////////
+// EXPERIENCE
+///////////////////////
+
+model Experience {
+  experience_id Int @id @default(autoincrement())
+  user_id       Int
+
+  worker WorkerProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  establishment_name String
+  job_title          String
+  description        String?
+  start_date         DateTime
+  end_date           DateTime?
+  is_current_role    Boolean   @default(false)
+  created_at         DateTime  @default(now())
+}
+
+///////////////////////
+// DIPLOMA (RGPD)
+///////////////////////
+
+model Diploma {
+  diploma_id Int @id @default(autoincrement())
+  user_id    Int
+
+  worker WorkerProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  name                String
+  institution         String?
+  issue_date          DateTime?
+  description         String?
+  verification_status VerificationStatus @default(PENDING)
+
+  file_url String
+}
+
+///////////////////////
+// AVAILABILITY
+///////////////////////
+
+model Availability {
+  availability_id   Int @id @default(autoincrement())
+  worker_profile_id Int
+
+  worker WorkerProfile @relation(fields: [worker_profile_id], references: [user_id], onDelete: Cascade)
+
+  start_datetime DateTime
+  end_datetime   DateTime
+}
+
+///////////////////////
+// MISSIONS
+///////////////////////
+
+model Mission {
+  mission_id       Int @id @default(autoincrement())
+  establishment_id Int
+  city_id          Int
+
+  establishment EstablishmentProfile @relation(fields: [establishment_id], references: [user_id], onDelete: Cascade)
+  city          City                 @relation(fields: [city_id], references: [city_id])
+
+  title       String
+  start_date  DateTime
+  end_date    DateTime
+  status      String
+  description String?
+
+  applications Application[]
+}
+
+///////////////////////
+// APPLICATION
+///////////////////////
+
+model Application {
+  application_id    Int @id @default(autoincrement())
+  worker_profile_id Int
+  mission_id        Int
+
+  worker  WorkerProfile @relation(fields: [worker_profile_id], references: [user_id], onDelete: Cascade)
+  mission Mission       @relation(fields: [mission_id], references: [mission_id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+
+  intervention Intervention?
+}
+
+///////////////////////
+// INTERVENTION & FEEDBACK
+///////////////////////
+
+model Intervention {
+  intervention_id Int @id @default(autoincrement())
+  application_id  Int @unique
+
+  application Application @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+
+  feedbacks Feedback[]
+}
+
+model Feedback {
+  feedback_id     Int @id @default(autoincrement())
+  intervention_id Int
+
+  intervention Intervention @relation(fields: [intervention_id], references: [intervention_id], onDelete: Cascade)
+
+  content String
+  rating  Int?
+}
+
+///////////////////////
+// NOTIFICATION
+///////////////////////
+
+model Notification {
+  notification_id Int @id @default(autoincrement())
+  user_id         Int
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  message    String
+  type       NotificationType
+  created_at DateTime         @default(now())
+}
