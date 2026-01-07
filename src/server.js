@@ -2,14 +2,17 @@ import express from 'express';
 import {config} from "dotenv";
 import {disconnectDB, connectDB} from "./config/db.js";
 
+
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
+
 
 //Import routes
 import authRoutes from "./routes/authRoutes.js"
 import workerRoutes from "./routes/workerRoutes.js"
 import specialityRoutes from "./routes/specialityRoutes.js";
 import diplomaRoutes from "./routes/diplomaRoutes.js";
+
 import adminRoutes from "./routes/adminRoutes.js";
 
 config();
@@ -19,8 +22,11 @@ connectDB();
 
 const app = express();
 
+
 //swagger 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
 
 // Body parsing middlwares
 app.use(express.json());
@@ -31,7 +37,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/worker", workerRoutes);
 app.use("/api/specialities", specialityRoutes);
 app.use("/api/diplomas", diplomaRoutes);
+
+
 app.use("/api/admin", adminRoutes);
+
 
 
 

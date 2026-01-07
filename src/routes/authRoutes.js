@@ -6,6 +6,7 @@ import { registerSchema, registerEstablishmentSchema, loginSchema } from "../val
 const router = express.Router();
 
 
+
 /**
  * @swagger
  * /api/auth/register/worker:
@@ -110,6 +111,11 @@ router.post("/login", validate(loginSchema), login);
  *       200:
  *         description: User logged out successfully
  */
+
+router.post("/register/worker", validate(registerSchema), registerWorker);
+router.post("/register/establishment", validate(registerEstablishmentSchema), registerEstablishment);
+router.post("/login", validate(loginSchema), login);
+
 router.post("/logout", logout);
 
 export default router;

@@ -192,6 +192,7 @@ export const removeWorkerSpeciality = async (req, res) => {
       message: "Failed to remove speciality",
     });
   }
+
 };
 
 //----------------------------- Submit Worker Profile for Review -----------------------------//
@@ -271,4 +272,5 @@ export const submitWorkerProfile = async (req, res) => {
       message: "Failed to submit worker profile",
     });
   }
+
 };
