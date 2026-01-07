@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import prisma from "../src/config/db.js";
+import {prisma} from "../src/config/db.js";
 
 async function main() {
   const adminEmail = "admin@socialink.com";
@@ -23,8 +23,7 @@ async function main() {
     data: {
       email: adminEmail,
       password: hashedPassword,
-      role: "ADMIN",
-      verification_status: "APPROVED", // admin toujours validé
+      role: "ADMIN"
     },
   });
 

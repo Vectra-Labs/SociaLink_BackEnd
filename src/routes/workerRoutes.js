@@ -1,7 +1,7 @@
 import express from "express";
 import { uploadImage } from "../middleware/uploadImageMiddleware.js";
 
-import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality,submitWorkerProfile} from "../controllers/workerController.js";
+import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality,submitWorkerProfile,getWorkerProfile} from "../controllers/workerController.js";
 
 import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality} from "../controllers/workerController.js";
 
@@ -28,6 +28,9 @@ router.put("/profile/update", authMiddleware,roleMiddleware("WORKER"),uploadImag
 router.post( "/add/specialities",authMiddleware,roleMiddleware("WORKER"),validate(addWorkerSpecialitiesSchema),addWorkerSpecialities);
 router.get("/specialities",authMiddleware,roleMiddleware("WORKER"),getWorkerSpecialities);
 router.delete("/specialities/:id",authMiddleware,roleMiddleware("WORKER"),removeWorkerSpeciality);
+
+router.get("/profile",getWorkerProfile);
+
 
 
 
