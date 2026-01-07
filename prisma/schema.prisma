@@ -286,10 +286,9 @@ model Notification {
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   message    String
-<<<<<<< HEAD
+
   is_read         Boolean @default(false) 
-=======
->>>>>>> d33582d0d9e69654c145051dbf59b9807ac504e8
+
   type       NotificationType
   created_at DateTime         @default(now())
 }
