@@ -177,3 +177,75 @@ export const markAllNotificationsAsRead = async (req, res) => {
     });
   }
 };
+
+export const getWorkerById = async (req, res) => {
+  try {
+    const workerId = Number(req.params.id);
+
+    const worker = await prisma.workerProfile.findUnique({
+      where: { user_id: workerId },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            email: true,
+            role: true,
+            created_at: true,
+          },
+        },
+        specialities: {
+          include: {
+            speciality: {
+              select: {
+                speciality_id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        diplomas: {
+          select: {
+            diploma_id: true,
+            name: true,
+            institution: true,
+            verification_status: true,
+            file_url: true,
+            created_at: true,
+          },
+        },
+      },
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        message: "Worker not found",
+      });
+    }
+
+    res.status(200).json({
+      data: {
+        user: worker.user,
+        profile: {
+          first_name: worker.first_name,
+          last_name: worker.last_name,
+          phone: worker.phone,
+          bio: worker.bio,
+          profile_pic_url: worker.profile_pic_url,
+          verification_status: worker.verification_status,
+        },
+        specialities: worker.specialities.map((s) => ({
+          speciality_id: s.speciality.speciality_id,
+          name: s.speciality.name,
+        })),
+        diplomas: worker.diplomas,
+      },
+    });
+  } catch (error) {
+    console.error("GET WORKER BY ID ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch worker profile",
+    });
+  }
+};
+
+
