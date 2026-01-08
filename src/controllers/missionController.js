@@ -32,3 +32,41 @@ export const createMission = async (req, res) => {
     res.status(500).json({ message: "Failed to create mission" });
   }
 };
+
+
+export const applyToMission = async (req, res) => {
+  try {
+    const missionId = Number(req.params.id);
+    const workerId = req.user.user_id;
+
+    const existing = await prisma.application.findFirst({
+      where: {
+        mission_id: missionId,
+        worker_profile_id: workerId,
+      },
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "You already applied to this mission",
+      });
+    }
+
+    await prisma.application.create({
+      data: {
+        mission_id: missionId,
+        worker_profile_id: workerId,
+        status: "PENDING",
+      },
+    });
+
+    res.status(201).json({
+      message: "Application submitted successfully",
+    });
+  } catch (error) {
+    console.error("APPLY MISSION ERROR:", error);
+    res.status(500).json({ message: "Failed to apply to mission" });
+  }
+};
+
+
