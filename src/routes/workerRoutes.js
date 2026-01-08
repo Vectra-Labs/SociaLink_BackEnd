@@ -1,7 +1,7 @@
 import express from "express";
 import { uploadImage } from "../middleware/uploadImageMiddleware.js";
 
-import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality,submitWorkerProfile,getWorkerProfile,getWorkerNotifications} from "../controllers/workerController.js";
+import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality,submitWorkerProfile,getWorkerProfile,getWorkerNotifications,markWorkerNotificationAsRead} from "../controllers/workerController.js";
 
 import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality} from "../controllers/workerController.js";
 
@@ -33,6 +33,8 @@ router.get("/profile",getWorkerProfile);
 
 
 router.get("/notifications",getWorkerNotifications);
+
+router.patch("/notifications/:id/read",markWorkerNotificationAsRead);
 
 
 

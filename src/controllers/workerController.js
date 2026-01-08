@@ -376,3 +376,40 @@ export const getWorkerNotifications = async (req, res) => {
     });
   }
 };
+
+//----------------------------- Mark Worker Notification as Read -----------------------------//
+export const markWorkerNotificationAsRead = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const notificationId = Number(req.params.id);
+
+    // Vérifier que la notification appartient bien au worker
+    const notification = await prisma.notification.findFirst({
+      where: {
+        notification_id: notificationId,
+        user_id: userId,
+      },
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        message: "Notification not found",
+      });
+    }
+
+    // Marquer comme lue
+    await prisma.notification.update({
+      where: { notification_id: notificationId },
+      data: { is_read: true },
+    });
+
+    res.status(200).json({
+      message: "Notification marked as read",
+    });
+  } catch (error) {
+    console.error("MARK WORKER NOTIFICATION READ ERROR:", error);
+    res.status(500).json({
+      message: "Failed to mark notification as read",
+    });
+  }
+};
