@@ -344,3 +344,35 @@ export const getWorkerProfile = async (req, res) => {
     });
   }
 };
+
+//----------------------------- Get Worker Notifications -----------------------------//
+export const getWorkerNotifications = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        user_id: userId,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+      select: {
+        notification_id: true,
+        message: true,
+        type: true,
+        is_read: true,
+        created_at: true,
+      },
+    });
+
+    res.status(200).json({
+      data: notifications,
+    });
+  } catch (error) {
+    console.error("GET WORKER NOTIFICATIONS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch notifications",
+    });
+  }
+};
