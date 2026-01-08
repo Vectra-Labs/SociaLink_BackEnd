@@ -413,3 +413,29 @@ export const markWorkerNotificationAsRead = async (req, res) => {
     });
   }
 };
+
+
+export const markAllWorkerNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    await prisma.notification.updateMany({
+      where: {
+        user_id: userId,
+        is_read: false,
+      },
+      data: {
+        is_read: true,
+      },
+    });
+
+    res.status(200).json({
+      message: "All notifications marked as read",
+    });
+  } catch (error) {
+    console.error("MARK ALL WORKER NOTIFICATIONS READ ERROR:", error);
+    res.status(500).json({
+      message: "Failed to mark all notifications as read",
+    });
+  }
+};
