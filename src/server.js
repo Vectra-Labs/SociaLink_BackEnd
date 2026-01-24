@@ -1,10 +1,13 @@
 import express from 'express';
 import {config} from "dotenv";
 import {disconnectDB, connectDB} from "./config/db.js";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 
 
-import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger.js";
+
+//import swaggerUi from "swagger-ui-express";
+//import { swaggerSpec } from "./config/swagger.js";
 
 
 //Import routes
@@ -12,11 +15,10 @@ import authRoutes from "./routes/authRoutes.js"
 import workerRoutes from "./routes/workerRoutes.js"
 import specialityRoutes from "./routes/specialityRoutes.js";
 import diplomaRoutes from "./routes/diplomaRoutes.js";
-
+import missionRoutes from "./routes/missionRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
 config();
-
 connectDB();
 
 
@@ -24,10 +26,15 @@ const app = express();
 
 
 //swagger 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+//app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
+app.use(cors({
+  origin: "http://localhost:5174",
+  credentials: true
+}));
 
+app.use(cookieParser());
 // Body parsing middlwares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,6 +44,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/worker", workerRoutes);
 app.use("/api/specialities", specialityRoutes);
 app.use("/api/diplomas", diplomaRoutes);
+app.use("/api", missionRoutes);
 
 
 app.use("/api/admin", adminRoutes);
@@ -44,7 +52,7 @@ app.use("/api/admin", adminRoutes);
 
 
 
-const PORT = 5001;
+const PORT = 3000;
 
 const server = app.listen(PORT, () => {
     console.log(`Server is running on ${PORT}`);

@@ -2,10 +2,9 @@ import express from "express";
 import { uploadImage } from "../middleware/uploadImageMiddleware.js";
 
 import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality,submitWorkerProfile,getWorkerProfile,getWorkerNotifications,markWorkerNotificationAsRead,
-    markAllWorkerNotificationsAsRead
+    markAllWorkerNotificationsAsRead,getMyMissions
 } from "../controllers/workerController.js";
 
-import {updateWorkerProfile, addWorkerSpecialities,getWorkerSpecialities,removeWorkerSpeciality} from "../controllers/workerController.js";
 
 import { validate } from "../middleware/validateMiddleware.js";
 import { updateWorkerProfileSchema ,addWorkerSpecialitiesSchema } from "../validators/authSchema.js";
@@ -32,7 +31,7 @@ router.get("/specialities",authMiddleware,roleMiddleware("WORKER"),getWorkerSpec
 router.delete("/specialities/:id",authMiddleware,roleMiddleware("WORKER"),removeWorkerSpeciality);
 
 router.get("/profile",getWorkerProfile);
-
+router.get("/missions",getMyMissions);
 
 router.get("/notifications",getWorkerNotifications);
 

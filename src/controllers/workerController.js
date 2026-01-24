@@ -439,3 +439,61 @@ export const markAllWorkerNotificationsAsRead = async (req, res) => {
     });
   }
 };
+
+//----------------------------- Get My Missions -----------------------------//
+export const getMyMissions = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const applications = await prisma.application.findMany({
+      where: {
+        worker_profile_id: userId,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+      include: {
+        mission: {
+          include: {
+            establishment: {
+              select: {
+                user_id: true,
+                name: true,
+              },
+            },
+            city: {
+              select: {
+                city_id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const result = applications.map((app) => ({
+      application_id: app.application_id,
+      status: app.status,
+      applied_at: app.created_at,
+      mission: {
+        mission_id: app.mission.mission_id,
+        title: app.mission.title,
+        description: app.mission.description,
+        start_date: app.mission.start_date,
+        end_date: app.mission.end_date,
+        city: app.mission.city,
+        establishment: app.mission.establishment,
+      },
+    }));
+
+    res.status(200).json({
+      data: result,
+    });
+  } catch (error) {
+    console.error("GET MY MISSIONS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch worker missions",
+    });
+  }
+};
