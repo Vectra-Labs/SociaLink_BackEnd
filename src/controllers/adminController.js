@@ -1,25 +1,11 @@
-import {prisma} from "../config/db.js";
+import * as adminService from "../services/adminService.js";
 
 
 export const getAdminNotifications = async (req, res) => {
   try {
     const adminId = req.user.user_id;
 
-    const notifications = await prisma.notification.findMany({
-      where: {
-        user_id: adminId,
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-      select: {
-        notification_id: true,
-        message: true,
-        type: true,
-        is_read: true,
-        created_at: true,
-      },
-    });
+    const notifications = await adminService.getAdminNotificationsService(adminId);
 
     res.status(200).json({
       data: notifications,
@@ -37,17 +23,7 @@ export const getAdminNotifications = async (req, res) => {
 //----------------------------- Get Workers Under Review -----------------------------//
 export const getWorkersUnderReview = async (req, res) => {
   try {
-    const workers = await prisma.workerProfile.findMany({
-      where: { verification_status: "UNDER_REVIEW" },
-      include: {
-        user: {
-          select: {
-            user_id: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const workers = await adminService.getWorkersUnderReviewService();
 
     res.status(200).json({ data: workers });
   } catch (error) {
@@ -62,21 +38,9 @@ export const approveWorker = async (req, res) => {
   try {
     const workerId = Number(req.params.id);
 
-    await prisma.$transaction([
-      prisma.workerProfile.update({
-        where: { user_id: workerId },
-        data: { verification_status: "APPROVED" },
-      }),
-      prisma.notification.create({
-        data: {
-          user_id: workerId,
-          type: "SUCCESS",
-          message: "Votre profil a été validé par administrateur",
-        },
-      }),
-    ]);
+    const result = await adminService.approveWorkerService(workerId);
 
-    res.status(200).json({ message: "Worker approved successfully" });
+    res.status(200).json(result);
   } catch (error) {
     console.error("APPROVE WORKER ERROR:", error);
     res.status(500).json({ message: "Failed to approve worker" });
@@ -90,30 +54,12 @@ export const rejectWorker = async (req, res) => {
     const workerId = Number(req.params.id);
     const { reason } = req.body;
 
-    if (!reason) {
-      return res.status(400).json({
-        message: "Rejection reason is required",
-      });
-    }
+    const result = await adminService.rejectWorkerService(workerId, reason);
 
-    await prisma.$transaction([
-      prisma.workerProfile.update({
-        where: { user_id: workerId },
-        data: { verification_status: "REJECTED" },
-      }),
-      prisma.notification.create({
-        data: {
-          user_id: workerId,
-          type: "WARNING",
-          message: `Profil refusé : ${reason}`,
-        },
-      }),
-    ]);
-
-    res.status(200).json({ message: "Worker rejected successfully" });
+    res.status(200).json(result);
   } catch (error) {
     console.error("REJECT WORKER ERROR:", error);
-    res.status(500).json({ message: "Failed to reject worker" });
+    res.status(error.message === "Rejection reason is required" ? 400 : 500).json({ message: error.message || "Failed to reject worker" });
   }
 };
 
@@ -123,31 +69,13 @@ export const markNotificationAsRead = async (req, res) => {
     const adminId = req.user.user_id;
     const notificationId = Number(req.params.id);
 
-    const notification = await prisma.notification.findFirst({
-      where: {
-        notification_id: notificationId,
-        user_id: adminId, // sécurité
-      },
-    });
+    const result = await adminService.markNotificationAsReadService(adminId, notificationId);
 
-    if (!notification) {
-      return res.status(404).json({
-        message: "Notification not found",
-      });
-    }
-
-    await prisma.notification.update({
-      where: { notification_id: notificationId },
-      data: { is_read: true },
-    });
-
-    res.status(200).json({
-      message: "Notification marked as read",
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error("MARK NOTIFICATION READ ERROR:", error);
-    res.status(500).json({
-      message: "Failed to mark notification as read",
+    res.status(error.message === "Notification not found" ? 404 : 500).json({
+      message: error.message || "Failed to mark notification as read",
     });
   }
 };
@@ -157,19 +85,9 @@ export const markAllNotificationsAsRead = async (req, res) => {
   try {
     const adminId = req.user.user_id;
 
-    await prisma.notification.updateMany({
-      where: {
-        user_id: adminId,
-        is_read: false,
-      },
-      data: {
-        is_read: true,
-      },
-    });
+    const result = await adminService.markAllNotificationsAsReadService(adminId);
 
-    res.status(200).json({
-      message: "All notifications marked as read",
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error("MARK ALL NOTIFICATIONS READ ERROR:", error);
     res.status(500).json({
@@ -181,71 +99,32 @@ export const markAllNotificationsAsRead = async (req, res) => {
 export const getWorkerById = async (req, res) => {
   try {
     const workerId = Number(req.params.id);
-
-    const worker = await prisma.workerProfile.findUnique({
-      where: { user_id: workerId },
-      include: {
-        user: {
-          select: {
-            user_id: true,
-            email: true,
-            role: true,
-            created_at: true,
-          },
-        },
-        specialities: {
-          include: {
-            speciality: {
-              select: {
-                speciality_id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        diplomas: {
-          select: {
-            diploma_id: true,
-            name: true,
-            institution: true,
-            verification_status: true,
-            file_url: true,
-            created_at: true,
-          },
-        },
-      },
-    });
-
-    if (!worker) {
-      return res.status(404).json({
-        message: "Worker not found",
-      });
-    }
+    const result = await adminService.getWorkerByIdService(workerId);
 
     res.status(200).json({
-      data: {
-        user: worker.user,
-        profile: {
-          first_name: worker.first_name,
-          last_name: worker.last_name,
-          phone: worker.phone,
-          bio: worker.bio,
-          profile_pic_url: worker.profile_pic_url,
-          verification_status: worker.verification_status,
-        },
-        specialities: worker.specialities.map((s) => ({
-          speciality_id: s.speciality.speciality_id,
-          name: s.speciality.name,
-        })),
-        diplomas: worker.diplomas,
-      },
+      data: result,
     });
   } catch (error) {
     console.error("GET WORKER BY ID ERROR:", error);
-    res.status(500).json({
-      message: "Failed to fetch worker profile",
+    res.status(error.message === "Worker not found" ? 404 : 500).json({
+      message: error.message || "Failed to fetch worker profile",
     });
   }
 };
 
 
+//----------------------------- Get Admin Statistics -----------------------------//
+export const getAdminStats = async (req, res) => {
+  try {
+    const stats = await adminService.getAdminStatsService();
+
+    res.status(200).json({
+      data: stats,
+    });
+  } catch (error) {
+    console.error("GET ADMIN STATS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch admin statistics",
+    });
+  }
+};

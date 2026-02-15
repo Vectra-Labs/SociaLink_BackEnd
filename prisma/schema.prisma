@@ -21,22 +21,27 @@ model City {
   establishments EstablishmentProfile[]
   missions       Mission[]
   workers        WorkerProfile[]
+
+  @@unique([name, region_id])
 }
 
 model User {
-  user_id              Int                   @id @default(autoincrement())
-  email                String                @unique
-  password             String
-  role                 UserRole
-  created_at           DateTime              @default(now())
+  user_id                Int                   @id @default(autoincrement())
+  email                  String                @unique
+  password               String
+  role                   UserRole
+  created_at             DateTime              @default(now())
+  email_code             String?
+  email_code_expires     DateTime?
+  email_verified         Boolean               @default(false)
+  reset_password_expires DateTime?
+  reset_password_token   String?
+  establishmentProfile   EstablishmentProfile?
+  notifications          Notification[]
+  workerProfile          WorkerProfile?
 
-  email_verified Boolean @default(false)
-  email_code String?
-  email_code_expires DateTime?
-
-  establishmentProfile EstablishmentProfile?
-  notifications        Notification[]
-  workerProfile        WorkerProfile?
+  @@index([email_code])
+  @@index([reset_password_token])
 }
 
 model WorkerProfile {
@@ -55,10 +60,11 @@ model WorkerProfile {
   applications        Application[]
   availabilities      Availability[]
   diplomas            Diploma[]
-  experiences         Experience[]
+
   city                City?              @relation(fields: [city_id], references: [city_id])
   user                User               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   specialities        WorkerSpeciality[]
+  conversations       Conversation[]
 }
 
 model EstablishmentProfile {
@@ -80,6 +86,7 @@ model EstablishmentProfile {
   structure           Structure?         @relation(fields: [structure_id], references: [id])
   user                User               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   missions            Mission[]
+  conversations       Conversation[]
 }
 
 model Structure {
@@ -89,11 +96,7 @@ model Structure {
   establishments EstablishmentProfile[]
 }
 
-model Speciality {
-  speciality_id Int                @id @default(autoincrement())
-  name          String             @unique
-  workers       WorkerSpeciality[]
-}
+
 
 model WorkerSpeciality {
   speciality_id Int
@@ -104,38 +107,47 @@ model WorkerSpeciality {
   @@id([user_id, speciality_id])
 }
 
-model Experience {
-  experience_id      Int           @id @default(autoincrement())
-  description        String?
-  start_date         DateTime
-  end_date           DateTime?
-  created_at         DateTime      @default(now())
-  establishment_name String
-  is_current_role    Boolean       @default(false)
-  job_title          String
-  user_id            Int
-  worker             WorkerProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-}
+
 
 model Diploma {
   diploma_id          Int                @id @default(autoincrement())
   description         String?
-  file_url            String
   institution         String?
   issue_date          DateTime?
   name                String
   user_id             Int
   verification_status VerificationStatus @default(PENDING)
+  created_at          DateTime           @default(now())
+  file_url            String
   worker              WorkerProfile      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model Availability {
   availability_id   Int           @id @default(autoincrement())
   worker_profile_id Int
-  start_datetime    DateTime
-  end_datetime      DateTime
+  date              DateTime
+  status            AvailabilityStatus @default(AVAILABLE)
   worker            WorkerProfile @relation(fields: [worker_profile_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([worker_profile_id, date])
 }
+
+enum AvailabilityStatus {
+  AVAILABLE
+  OCCUPIED
+  UNAVAILABLE
+  HOLIDAY
+}
+
+model Speciality {
+  speciality_id Int                @id @default(autoincrement())
+  name          String             @unique
+  workers       WorkerSpeciality[]
+
+  missions      MissionSpeciality[] 
+}
+
+
 
 model Mission {
   mission_id       Int                  @id @default(autoincrement())
@@ -146,19 +158,36 @@ model Mission {
   city_id          Int
   establishment_id Int
   status           String
+  budget           Float
+  created_at       DateTime             @default(now())
   applications     Application[]
   city             City                 @relation(fields: [city_id], references: [city_id])
   establishment    EstablishmentProfile @relation(fields: [establishment_id], references: [user_id], onDelete: Cascade)
+
+  specialities     MissionSpeciality[] 
+}
+
+model MissionSpeciality {
+  mission_id     Int
+  speciality_id  Int
+
+  mission    Mission     @relation(fields: [mission_id], references: [mission_id], onDelete: Cascade)
+  speciality Speciality  @relation(fields: [speciality_id], references: [speciality_id], onDelete: Cascade)
+
+  @@id([mission_id, speciality_id])
 }
 
 model Application {
-  application_id    Int           @id @default(autoincrement())
+  application_id    Int               @id @default(autoincrement())
   worker_profile_id Int
   mission_id        Int
-  created_at        DateTime      @default(now())
-  mission           Mission       @relation(fields: [mission_id], references: [mission_id], onDelete: Cascade)
-  worker            WorkerProfile @relation(fields: [worker_profile_id], references: [user_id], onDelete: Cascade)
+  created_at        DateTime          @default(now())
+  status            ApplicationStatus @default(PENDING)
+  mission           Mission           @relation(fields: [mission_id], references: [mission_id], onDelete: Cascade)
+  worker            WorkerProfile     @relation(fields: [worker_profile_id], references: [user_id], onDelete: Cascade)
   intervention      Intervention?
+  ///
+  @@unique([worker_profile_id, mission_id])
 }
 
 model Intervention {
@@ -181,8 +210,44 @@ model Notification {
   user_id         Int
   message         String
   created_at      DateTime         @default(now())
+  is_read         Boolean          @default(false)
   type            NotificationType
   user            User             @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model Conversation {
+  conversation_id  Int      @id @default(autoincrement())
+  worker_id        Int
+  establishment_id Int
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  messages         Message[]
+  worker           WorkerProfile        @relation(fields: [worker_id], references: [user_id], onDelete: Cascade)
+  establishment    EstablishmentProfile @relation(fields: [establishment_id], references: [user_id], onDelete: Cascade)
+  
+  @@unique([worker_id, establishment_id])
+}
+
+model Message {
+  message_id      Int      @id @default(autoincrement())
+  conversation_id Int
+  sender_id       Int
+  content         String
+  created_at      DateTime @default(now())
+  is_read         Boolean  @default(false)
+
+  conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED_BY_WORKER
+  COMPLETED_CONFIRMED
+  DISPUTED
 }
 
 enum UserRole {

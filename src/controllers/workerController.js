@@ -1,36 +1,10 @@
-import {prisma} from "../config/db.js";
-import { supabase } from "../config/supabase.js";
+import * as workerService from "../services/workerService.js";
 
 //----------------------------- Update Worker Profile -----------------------------//
 export const updateWorkerProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const dataToUpdate = { ...req.body };
-
-    // Upload photo if exists
-    if (req.file) {
-      const fileName = `worker_${userId}_${Date.now()}.png`;
-
-      const { error } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: true,
-        });
-
-      if (error) throw error;
-
-      const { data } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(fileName);
-
-      dataToUpdate.profile_pic_url = data.publicUrl;
-    }
-
-    const updatedProfile = await prisma.workerProfile.update({
-      where: { user_id: userId },
-      data: dataToUpdate,
-    });
+    const updatedProfile = await workerService.updateWorkerProfileService(userId, req.body, req.files);
 
     res.status(200).json({
       message: "Profile updated successfully",
@@ -39,7 +13,7 @@ export const updateWorkerProfile = async (req, res) => {
   } catch (error) {
     console.error("UPDATE PROFILE ERROR:", error);
     res.status(500).json({
-      message: "Failed to update profile",
+      message: error.message || "Failed to update profile",
     });
   }
 };
@@ -51,59 +25,15 @@ export const addWorkerSpecialities = async (req, res) => {
     const userId = req.user.user_id;
     const { speciality_ids } = req.body;
 
-    //  Vérifier que les spécialités existent
-    const existingSpecialities = await prisma.speciality.findMany({
-      where: {
-        speciality_id: { in: speciality_ids },
-      },
-      select: { speciality_id: true },
-    });
+    const result = await workerService.addWorkerSpecialitiesService(userId, speciality_ids);
 
-    if (existingSpecialities.length !== speciality_ids.length) {
-      return res.status(400).json({
-        message: "One or more specialities do not exist",
-      });
-    }
-
-    //  Éviter les doublons (déjà associées)
-    const alreadyLinked = await prisma.workerSpeciality.findMany({
-      where: {
-        user_id: userId,
-        speciality_id: { in: speciality_ids },
-      },
-      select: { speciality_id: true },
-    });
-
-    const alreadyLinkedIds = alreadyLinked.map(
-      (item) => item.speciality_id
-    );
-
-    const newSpecialities = speciality_ids.filter(
-      (id) => !alreadyLinkedIds.includes(id)
-    );
-
-    if (newSpecialities.length === 0) {
-      return res.status(200).json({
-        message: "Specialities already added",
-      });
-    }
-
-    //  Créer les relations
-    await prisma.workerSpeciality.createMany({
-      data: newSpecialities.map((specialityId) => ({
-        user_id: userId,
-        speciality_id: specialityId,
-      })),
-    });
-
-    res.status(201).json({
-      message: "Specialities added successfully",
-      added_specialities: newSpecialities,
-    });
+    // If service returns strict mismatch, it throws. If success (including no-op), it returns result.
+    res.status(201).json(result);
   } catch (error) {
     console.error("ADD WORKER SPECIALITIES ERROR:", error);
-    res.status(500).json({
-      message: "Failed to add specialities",
+    const status = error.message === "One or more specialities do not exist" ? 400 : 500;
+    res.status(status).json({
+      message: error.message || "Failed to add specialities",
     });
   }
 };
@@ -112,30 +42,8 @@ export const addWorkerSpecialities = async (req, res) => {
 export const getWorkerSpecialities = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    const workerSpecialities = await prisma.workerSpeciality.findMany({
-      where: {
-        user_id: userId,
-      },
-      include: {
-        speciality: {
-          select: {
-            speciality_id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Format response to return only speciality details
-    const specialities = workerSpecialities.map((item) => ({
-      speciality_id: item.speciality.speciality_id,
-      name: item.speciality.name,
-    }));
-
-    res.status(200).json({
-      data: specialities,
-    });
+    const specialities = await workerService.getWorkerSpecialitiesService(userId);
+    res.status(200).json({ data: specialities });
   } catch (error) {
     console.error("GET WORKER SPECIALITIES ERROR:", error);
     res.status(500).json({
@@ -151,196 +59,48 @@ export const removeWorkerSpeciality = async (req, res) => {
     const userId = req.user.user_id;
     const specialityId = Number(req.params.id);
 
-    if (isNaN(specialityId)) {
-      return res.status(400).json({
-        message: "Invalid speciality id",
-      });
-    }
-
-    // Vérifier si la relation existe
-    const existing = await prisma.workerSpeciality.findUnique({
-      where: {
-        user_id_speciality_id: {
-          user_id: userId,
-          speciality_id: specialityId,
-        },
-      },
-    });
-
-    if (!existing) {
-      return res.status(404).json({
-        message: "Speciality not found for this worker",
-      });
-    }
-
-    // Supprimer la relation
-    await prisma.workerSpeciality.delete({
-      where: {
-        user_id_speciality_id: {
-          user_id: userId,
-          speciality_id: specialityId,
-        },
-      },
-    });
-
-    res.status(200).json({
-      message: "Speciality removed successfully",
-    });
+    const result = await workerService.removeWorkerSpecialityService(userId, specialityId);
+    res.status(200).json(result);
   } catch (error) {
     console.error("REMOVE WORKER SPECIALITY ERROR:", error);
-    res.status(500).json({
-      message: "Failed to remove speciality",
+    const status = (error.message === "Invalid speciality id" || error.message === "Speciality not found for this worker") ? 400 : 500;
+    // Note: original code returned 404 for not found, adapting here if needed
+    const finalStatus = error.message === "Speciality not found for this worker" ? 404 : status;
+
+    res.status(finalStatus).json({
+      message: error.message || "Failed to remove speciality",
     });
   }
-
 };
 
 //----------------------------- Submit Worker Profile for Review -----------------------------//
 export const submitWorkerProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    //  Vérifier le profil worker
-    const workerProfile = await prisma.workerProfile.findUnique({
-      where: { user_id: userId },
-      include: {
-        diplomas: true,
-        specialities: true,
-      },
-    });
-
-    if (!workerProfile) {
-      return res.status(404).json({
-        message: "Worker profile not found",
-      });
-    }
-
-    //  Empêcher double soumission
-    if (workerProfile.verification_status !== "PENDING") {
-      return res.status(400).json({
-        message: "Profile already submitted or reviewed",
-      });
-    }
-
-    //  Vérifications métier minimales
-    if (workerProfile.specialities.length === 0) {
-      return res.status(400).json({
-        message: "At least one speciality is required",
-      });
-    }
-
-    if (workerProfile.diplomas.length === 0) {
-      return res.status(400).json({
-        message: "At least one diploma is required",
-      });
-    }
-
-    //  Trouver un ADMIN 
-    const admin = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
-      select: { user_id: true },
-    });
-    if (!admin) {
-      return res.status(500).json({
-        message: "No admin found to notify",
-      });
-    }
-
-    // Transaction : update + notification
-    await prisma.$transaction([
-      prisma.workerProfile.update({
-        where: { user_id: userId },
-        data: {
-          verification_status: "UNDER_REVIEW",
-        },
-      }),
-      prisma.notification.create({
-        data: {
-          user_id: admin.user_id,
-          type: "INFO",
-          message: "Un nouveau travailleur a soumis son profil pour validation",
-        },
-      }),
-    ]);
-
-    res.status(200).json({
-      message: "Profile submitted successfully. Awaiting admin review.",
-    });
+    const result = await workerService.submitWorkerProfileService(userId);
+    res.status(200).json(result);
   } catch (error) {
     console.error("SUBMIT WORKER PROFILE ERROR:", error);
-    res.status(500).json({
-      message: "Failed to submit worker profile",
+    let status = 500;
+    if (error.message === "Worker profile not found") status = 404;
+    if (error.message.includes("already submitted") || error.message.includes("required")) status = 400;
+
+    res.status(status).json({
+      message: error.message || "Failed to submit worker profile",
     });
   }
-
 };
 
 //----------------------------- Get Worker Profile -----------------------------//
 export const getWorkerProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    const worker = await prisma.workerProfile.findUnique({
-      where: { user_id: userId },
-      include: {
-        user: {
-          select: {
-            user_id: true,
-            email: true,
-            role: true,
-          },
-        },
-        specialities: {
-          include: {
-            speciality: {
-              select: {
-                speciality_id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        diplomas: {
-          select: {
-            diploma_id: true,
-            name: true,
-            institution: true,
-            verification_status: true,
-            created_at: true,
-          },
-        },
-      },
-    });
-
-    if (!worker) {
-      return res.status(404).json({
-        message: "Worker profile not found",
-      });
-    }
-
-    // Format pour le frontend
-    const response = {
-      user: worker.user,
-      profile: {
-        first_name: worker.first_name,
-        last_name: worker.last_name,
-        phone: worker.phone,
-        bio: worker.bio,
-        profile_pic_url: worker.profile_pic_url,
-        verification_status: worker.verification_status,
-      },
-      specialities: worker.specialities.map((s) => ({
-        speciality_id: s.speciality.speciality_id,
-        name: s.speciality.name,
-      })),
-      diplomas: worker.diplomas,
-    };
-
+    const response = await workerService.getWorkerProfileService(userId);
     res.status(200).json({ data: response });
   } catch (error) {
     console.error("GET MY WORKER PROFILE ERROR:", error);
-    res.status(500).json({
-      message: "Failed to fetch worker profile",
+    res.status(error.message === "Worker profile not found" ? 404 : 500).json({
+      message: error.message || "Failed to fetch worker profile",
     });
   }
 };
@@ -349,26 +109,8 @@ export const getWorkerProfile = async (req, res) => {
 export const getWorkerNotifications = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    const notifications = await prisma.notification.findMany({
-      where: {
-        user_id: userId,
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-      select: {
-        notification_id: true,
-        message: true,
-        type: true,
-        is_read: true,
-        created_at: true,
-      },
-    });
-
-    res.status(200).json({
-      data: notifications,
-    });
+    const notifications = await workerService.getWorkerNotificationsService(userId);
+    res.status(200).json({ data: notifications });
   } catch (error) {
     console.error("GET WORKER NOTIFICATIONS ERROR:", error);
     res.status(500).json({
@@ -382,34 +124,12 @@ export const markWorkerNotificationAsRead = async (req, res) => {
   try {
     const userId = req.user.user_id;
     const notificationId = Number(req.params.id);
-
-    // Vérifier que la notification appartient bien au worker
-    const notification = await prisma.notification.findFirst({
-      where: {
-        notification_id: notificationId,
-        user_id: userId,
-      },
-    });
-
-    if (!notification) {
-      return res.status(404).json({
-        message: "Notification not found",
-      });
-    }
-
-    // Marquer comme lue
-    await prisma.notification.update({
-      where: { notification_id: notificationId },
-      data: { is_read: true },
-    });
-
-    res.status(200).json({
-      message: "Notification marked as read",
-    });
+    const result = await workerService.markWorkerNotificationAsReadService(userId, notificationId);
+    res.status(200).json(result);
   } catch (error) {
     console.error("MARK WORKER NOTIFICATION READ ERROR:", error);
-    res.status(500).json({
-      message: "Failed to mark notification as read",
+    res.status(error.message === "Notification not found" ? 404 : 500).json({
+      message: error.message || "Failed to mark notification as read",
     });
   }
 };
@@ -418,20 +138,8 @@ export const markWorkerNotificationAsRead = async (req, res) => {
 export const markAllWorkerNotificationsAsRead = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    await prisma.notification.updateMany({
-      where: {
-        user_id: userId,
-        is_read: false,
-      },
-      data: {
-        is_read: true,
-      },
-    });
-
-    res.status(200).json({
-      message: "All notifications marked as read",
-    });
+    const result = await workerService.markAllWorkerNotificationsAsReadService(userId);
+    res.status(200).json(result);
   } catch (error) {
     console.error("MARK ALL WORKER NOTIFICATIONS READ ERROR:", error);
     res.status(500).json({
@@ -444,56 +152,37 @@ export const markAllWorkerNotificationsAsRead = async (req, res) => {
 export const getMyMissions = async (req, res) => {
   try {
     const userId = req.user.user_id;
-
-    const applications = await prisma.application.findMany({
-      where: {
-        worker_profile_id: userId,
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-      include: {
-        mission: {
-          include: {
-            establishment: {
-              select: {
-                user_id: true,
-                name: true,
-              },
-            },
-            city: {
-              select: {
-                city_id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const result = applications.map((app) => ({
-      application_id: app.application_id,
-      status: app.status,
-      applied_at: app.created_at,
-      mission: {
-        mission_id: app.mission.mission_id,
-        title: app.mission.title,
-        description: app.mission.description,
-        start_date: app.mission.start_date,
-        end_date: app.mission.end_date,
-        city: app.mission.city,
-        establishment: app.mission.establishment,
-      },
-    }));
-
-    res.status(200).json({
-      data: result,
-    });
+    const result = await workerService.getMyMissionsService(userId);
+    res.status(200).json({ data: result });
   } catch (error) {
     console.error("GET MY MISSIONS ERROR:", error);
     res.status(500).json({
       message: "Failed to fetch worker missions",
     });
+  }
+};
+
+//----------------------------- Download CV (Secured) -----------------------------//
+export const downloadCV = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const requestorRole = req.user.role;
+    const targetUserId = req.params.workerId ? Number(req.params.workerId) : userId;
+
+    const result = await workerService.downloadCVService(userId, requestorRole, targetUserId);
+
+    if (result.type === "url") {
+      return res.redirect(result.url);
+    } else {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${result.filename}"`);
+      res.send(result.buffer);
+    }
+  } catch (error) {
+    console.error("DOWNLOAD CV ERROR:", error);
+    let status = 500;
+    if (error.message === "Access denied") status = 403;
+    if (error.message === "CV not found") status = 404;
+    res.status(status).json({ message: error.message || "Failed to download CV" });
   }
 };

@@ -1,14 +1,8 @@
 import express from 'express';
-import {config} from "dotenv";
-import {disconnectDB, connectDB} from "./config/db.js";
+import { config } from "dotenv";
+import { disconnectDB, connectDB } from "./config/db.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
-
-
-//import swaggerUi from "swagger-ui-express";
-//import { swaggerSpec } from "./config/swagger.js";
-
 
 //Import routes
 import authRoutes from "./routes/authRoutes.js"
@@ -17,6 +11,14 @@ import specialityRoutes from "./routes/specialityRoutes.js";
 import diplomaRoutes from "./routes/diplomaRoutes.js";
 import missionRoutes from "./routes/missionRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import regionRoutes from "./routes/regionRoutes.js";
+import cityRoutes from "./routes/cityRoutes.js";
+import establishmentRoutes from "./routes/establishmentRoutes.js";
+import applicationRoutes from "./routes/applicationRoutes.js";
+import availabilityRoutes from "./routes/availabilityRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+
 
 config();
 connectDB();
@@ -25,12 +27,8 @@ connectDB();
 const app = express();
 
 
-//swagger 
-//app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-
 app.use(cors({
-  origin: "http://localhost:5174",
+  origin: "http://localhost:5173",
   credentials: true
 }));
 
@@ -45,6 +43,13 @@ app.use("/api/worker", workerRoutes);
 app.use("/api/specialities", specialityRoutes);
 app.use("/api/diplomas", diplomaRoutes);
 app.use("/api", missionRoutes);
+app.use("/api/regions", regionRoutes);
+app.use("/api", cityRoutes);
+app.use("/api/establishment", establishmentRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/availability", availabilityRoutes);
+app.use("/api/feedbacks", feedbackRoutes);
+app.use("/api/chat", chatRoutes);
 
 
 app.use("/api/admin", adminRoutes);
@@ -55,33 +60,33 @@ app.use("/api/admin", adminRoutes);
 const PORT = 3000;
 
 const server = app.listen(PORT, () => {
-    console.log(`Server is running on ${PORT}`);
+  console.log(`Server is running on ${PORT}`);
 })
 
 // Hundle unhandled promise rejections
 process.on("unhandledRejection", async (err) => {
-    console.error("Unhandled Rejection:",err);
-    server.close(async () => {
-      await disconnectDB();
+  console.error("Unhandled Rejection:", err);
+  server.close(async () => {
+    await disconnectDB();
     process.exit(1);
-    });
+  });
 });
 
 // Handle uncaught exceptions
 process.on("uncaughtException", async (err) => {
-    console.error("Uncaught Exception:",err);
-   
-      await disconnectDB();
-    process.exit(1);
+  console.error("Uncaught Exception:", err);
+
+  await disconnectDB();
+  process.exit(1);
 
 });
 
 // Graceful shutdown 
 
 process.on("SIGTERM", async () => {
-    console.log("SIGTERM received. Shutting down gracefully");
-      server.close(async () => {
-      await disconnectDB();
+  console.log("SIGTERM received. Shutting down gracefully");
+  server.close(async () => {
+    await disconnectDB();
     process.exit(0);
-    });
+  });
 });

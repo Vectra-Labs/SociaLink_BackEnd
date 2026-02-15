@@ -8,9 +8,10 @@ export const uploadImage = multer({
     fileSize: 3 * 1024 * 1024, // 3MB
   },
   fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only image files are allowed"));
+    if (file.mimetype.startsWith("image/") || file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image and PDF files are allowed"));
     }
-    cb(null, true);
   },
 });

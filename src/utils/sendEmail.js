@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 
-export const sendVerificationEmail = async (email, code) => {
 
   // 1️⃣ Create transporter (SMTP client)
   const transporter = nodemailer.createTransport({
@@ -12,6 +11,9 @@ export const sendVerificationEmail = async (email, code) => {
       pass: process.env.EMAIL_PASS,
     },
   });
+
+export const sendVerificationEmail = async (email, code) => {
+
 
   // 2️⃣ Email content
   const mailOptions = {
@@ -28,4 +30,19 @@ export const sendVerificationEmail = async (email, code) => {
 
   // 3️⃣ Send email
   await transporter.sendMail(mailOptions);
+};
+
+
+export const sendResetPasswordLink = async (email, link) => {
+  await transporter.sendMail({
+    from: "SociaLink <noreply@socialink.com>",
+    to: email,
+    subject: "Reset your password",
+    html: `
+      <h2>Password Reset</h2>
+      <p>Click the button below to reset your password:</p>
+      <a href="${link}">Reset Password</a>
+      <p>Link expires in 15 minutes</p>
+    `,
+  });
 };
